@@ -1,3 +1,15 @@
+struct Body {
+    position : [f64 ; 3],
+    velocity : [f64 ; 3],
+    mass : f64
+}
+
+struct Simulator {
+    bodies : Body,
+    time_step : f64,
+    time : f64
+}
+
 fn vector_difference(a : &[f64 ; 3], b : &[f64; 3]) -> [f64 ; 3] {
     let mut difference : [f64 ; 3] = [0.0,0.0,0.0];
     for index in 0..3 {
