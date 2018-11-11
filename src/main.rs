@@ -11,7 +11,7 @@ struct Body {
 }
 
 struct Simulator {
-    bodies : Body,
+    bodies : Vec<Body>,
     time_step : f64,
     time : f64
 }
