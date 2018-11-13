@@ -1,9 +1,5 @@
 const GRAVITATIONAL_CONSTANT : f64 = 6.67408e-11;
 
-struct Force {
-    force : [f64 ; 3]
-}
-
 struct Body {
     position : [f64 ; 3],
     velocity : [f64 ; 3],
