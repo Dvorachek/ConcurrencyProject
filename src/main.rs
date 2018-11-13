@@ -16,7 +16,7 @@ struct Simulator {
     time : f64
 }
 
-fn vector_scalar_multiple(vector : &[f64 ; 3], scalar : f64) -> [f64 ; 3] {
+fn vector_scalar_multiple(vector : &[f64 ; 3], scalar : &f64) -> [f64 ; 3] {
     let mut multiple : [f64 ; 3] = [0.0, 0.0, 0.0];
     for index in 0..3 {
         multiple[index] = scalar * vector[index];
