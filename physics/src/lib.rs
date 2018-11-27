@@ -1,11 +1,14 @@
 const GRAVITATIONAL_CONSTANT : f64 = 6.67408e-11;
 
+#[derive(Clone)]
 pub struct Body {
+    pub id : usize,
     pub position : [f64 ; 3],
     pub velocity : [f64 ; 3],
     pub mass : f64
 }
 
+#[derive(Clone)]
 pub struct Simulator {
     pub bodies : Vec<Body>,
     pub time_step : f64,
@@ -13,12 +16,20 @@ pub struct Simulator {
 }
 
 pub struct WorkDone {
-    pub force : [f64 ; 3],
-    pub body_index : usize
+    force : [f64 ; 3],
+    body_index : usize
 }
 
 impl Simulator {
-    pub fn compute_force(&self, origin : &Body, attractor : &Body) -> [f64; 3] {
+    pub fn new(bodies : Vec<Body>, time : f64, time_step : f64) -> Simulator {
+        Simulator {
+            bodies : bodies,
+            time : 0.0,
+            time_step : 60.0
+        }
+    }
+
+    fn compute_force(&self, origin : &Body, attractor : &Body) -> [f64; 3] {
         let distance : f64 = vector_magnitude(&vector_difference(&attractor.position, &origin.position));
         let force_magnitude = GRAVITATIONAL_CONSTANT * origin.mass * attractor.mass / distance.powi(2);
         let rhat = normalize(&vector_difference(&origin.position, &attractor.position));
@@ -33,6 +44,32 @@ impl Simulator {
             euler_cromer_integrate(body, &work[i].force, &self.time_step);
         }
         self.time += self.time_step;
+    }
+
+    pub fn do_work(&mut self) -> Vec<WorkDone>{
+        println!("ThreadPool worker running do_work();");
+
+        let mut work_done : Vec<WorkDone> = Vec::new();
+        for origin in &self.bodies {
+
+            let mut force : [f64 ; 3] = [0.0, 0.0, 0.0];
+            for attractor in &self.bodies {
+                if origin.id == attractor.id {
+                    continue;
+                }
+                let f : [f64 ; 3] = self.compute_force(origin, attractor);
+                force = vector_sum(&force, &f);
+                let workdone = WorkDone {
+                    force : force,
+                    body_index : attractor.id
+                };
+                work_done.push(workdone);
+            }
+
+            
+        }
+
+        work_done
     }
 }
 
