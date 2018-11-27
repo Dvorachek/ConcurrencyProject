@@ -9,7 +9,6 @@ use physics::Body;
 use physics::Simulator;
 
 
-
 fn main() {
 
     // TESTING PHYSICS IMPORTS
