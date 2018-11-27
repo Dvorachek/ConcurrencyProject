@@ -1,6 +1,17 @@
 [package]
+
 name = "concurrency_project"
 version = "0.1.0"
-authors = [" <>"]
+authors = ["Dylan <dylan.dvorachek@gmail.com>"]
+
+[workspace]
+
+members = [
+    "physics",
+    "thread_pool",
+    ]
 
 [dependencies]
+
+physics = { path = "./physics" }
+thread_pool = { path = "./thread_pool" }
