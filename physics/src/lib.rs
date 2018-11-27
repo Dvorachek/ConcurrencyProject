@@ -24,8 +24,8 @@ impl Simulator {
     pub fn new(bodies : Vec<Body>, time : f64, time_step : f64) -> Simulator {
         Simulator {
             bodies : bodies,
-            time : 0.0,
-            time_step : 60.0
+            time : time,
+            time_step : time_step
         }
     }
 
