@@ -8,7 +8,7 @@ use thread_pool::ThreadPool;
 fn main() {
     let pool = ThreadPool::new(5);
 
-    loop{
+    for _ in 0..5 {
         pool.execute(|| {
             letscount();
         });
