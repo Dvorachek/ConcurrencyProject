@@ -61,18 +61,5 @@ fn main() {
         println!("sim time: {}", sim.time);
     }
 
-    // TODO: ADD DECONSTRUCTOR FOR THREADPOOL
-    loop{
-        /*
-        pool.execute(|| {
-            wait();
-        });
-        */
-    }
 }
 
-fn wait() {
-    println!("testing wait");
-    thread::sleep(Duration::from_secs(4));
-    println!("wait done!");
-}
