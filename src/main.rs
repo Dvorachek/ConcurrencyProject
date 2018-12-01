@@ -1,14 +1,10 @@
-use std::thread;
-use std::time::Duration;
 use std::sync::mpsc;
 
 extern crate thread_pool;
-use thread_pool::ThreadPool;
+use thread_pool::{ThreadPool, Computer};
 
 extern crate physics;
-use physics::Body;
-use physics::Simulator;
-use physics::WorkDone;
+use physics::{Body, Simulator, WorkDone};
 
 fn main() {
 
@@ -31,7 +27,35 @@ fn main() {
 
     let mut sim = Simulator::new(bodies, 0.0, 60.0);
 
-    let pool = ThreadPool::new(2);
+    // CREATE CPUS FOR GENERATING LATENCY IN WORKER THREADS
+    let cpu1 = Computer {
+        mean : 0.0,
+        std : 1.0
+    };
+
+    let cpu2 = Computer {
+        mean : 1.0,
+        std : 1.0
+    };
+
+    let cpu3 = Computer {
+        mean : 1.0,
+        std : 2.0
+    };
+
+    let cpu4 = Computer {
+        mean : 2.0,
+        std : 2.0
+    };
+    
+    let cpu5 = Computer {
+        mean : 2.0,
+        std : 3.0
+    };
+
+    let cpus : Vec<Computer> = vec![cpu1, cpu2, cpu3, cpu4, cpu5];
+
+    let pool = ThreadPool::new(cpus);
 
     // CHANNELS FOR RETURNING VALUES FROM THREADPOOL
     let (tx, rx) = mpsc::channel();

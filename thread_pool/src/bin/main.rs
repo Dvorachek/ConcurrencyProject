@@ -2,11 +2,40 @@ use std::thread;
 use std::time::Duration;
 
 extern crate thread_pool;
-use thread_pool::ThreadPool;
+use thread_pool::{ThreadPool, Computer};
 
 // Used primarily for testing the custom thread_pool library
 fn main() {
-    let pool = ThreadPool::new(5);
+
+    // create CPUs for generating latency in worker threads
+    let cpu1 = Computer {
+        mean : 0.0,
+        std : 1.0
+    };
+
+    let cpu2 = Computer {
+        mean : 1.0,
+        std : 1.0
+    };
+
+    let cpu3 = Computer {
+        mean : 1.0,
+        std : 2.0
+    };
+
+    let cpu4 = Computer {
+        mean : 2.0,
+        std : 2.0
+    };
+    
+    let cpu5 = Computer {
+        mean : 2.0,
+        std : 3.0
+    };
+
+    let cpus : Vec<Computer> = vec![cpu1, cpu2, cpu3, cpu4, cpu5];
+
+    let pool = ThreadPool::new(cpus);
 
     for _ in 0..5 {
         pool.execute(|| {
@@ -30,7 +59,7 @@ fn letscount() {
 }
 
 fn add(a: f64, b: f64) -> f64 {
-    let mut sum = a + b;
+    let sum = a + b;
 
     sum
 }

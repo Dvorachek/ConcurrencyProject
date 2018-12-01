@@ -1,8 +1,17 @@
 use std::thread;
+use std::time::Duration;
 use std::sync::mpsc;
 use std::sync::Arc;
 use std::sync::Mutex;
 
+extern crate rand;
+use rand::distributions::{Normal, Distribution};
+
+
+pub struct Computer {
+    pub mean : f64,
+    pub std : f64,
+}
 
 trait FnBox {
     fn call_box(self: Box<Self>);
@@ -14,13 +23,13 @@ impl<F: FnOnce()> FnBox for F {
     }
 }
 
-
 type Job = Box<dyn FnBox + Send + 'static>;
 
 enum Message {
     NewJob(Job),
     Terminate,
 }
+
 
 pub struct ThreadPool {
     workers: Vec<Worker>,
@@ -37,17 +46,18 @@ impl ThreadPool {
         self.sender.send(Message::NewJob(job)).unwrap();
     }
 
-    pub fn new(size: usize) -> ThreadPool {
-        assert!(size > 0);
+    pub fn new(cpus: Vec<Computer>) -> ThreadPool {
+        assert!(cpus.len() > 0);
 
         let (sender, receiver) = mpsc::channel();
 
         let receiver = Arc::new(Mutex::new(receiver));
 
-        let mut workers = Vec::with_capacity(size);
+        let mut workers = Vec::with_capacity(cpus.len());
 
-        for id in 0..size {
-            workers.push(Worker::new(id, Arc::clone(&receiver)));
+        // Enumerate over cpus and create workers
+        for (id, cpu) in cpus.iter().enumerate() {
+            workers.push(Worker::new(id, Arc::clone(&receiver), cpu));
         }
 
         ThreadPool {
@@ -77,14 +87,17 @@ impl Drop for ThreadPool {
     }
 }
 
+
 struct Worker {
     id: usize,
     thread: Option<thread::JoinHandle<()>>,
 }
 
 impl Worker {
-    fn new(id: usize, receiver: Arc<Mutex<mpsc::Receiver<Message>>>) ->
+    fn new(id: usize, receiver: Arc<Mutex<mpsc::Receiver<Message>>>, cpu: &Computer) ->
         Worker {
+
+        let normal = Normal::new(cpu.mean, cpu.std);
 
         let thread = thread::spawn(move ||{
             loop {
@@ -93,6 +106,16 @@ impl Worker {
                 match message {
                     Message::NewJob(job) => {
                         println!("Worker {} got a job; executing.", id);
+
+                        let mut v = normal.sample(&mut rand::thread_rng());
+                        // we need v to be a positive value
+                        while v < 0.0 {
+                            v = normal.sample(&mut rand::thread_rng());
+                        }
+                        println!("Sleeping worker {} with normal distributed latency {}", id, v);
+
+                        // parse v (currently f64) as u64
+                        thread::sleep(Duration::from_secs(v as u64));
 
                         job.call_box();
                     },
