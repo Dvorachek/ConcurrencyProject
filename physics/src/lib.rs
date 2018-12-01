@@ -37,37 +37,34 @@ impl Simulator {
         vector_scalar_multiple(&rhat, &force_magnitude)
     }
 
-    pub fn step_forward(&mut self, work : &mut Vec<WorkDone>) {
-        for i in 0..work.len() {
-            let index = work[i].body_index;
-            let body = &mut self.bodies[index];
-            euler_cromer_integrate(body, &work[i].force, &self.time_step);
+    pub fn step_forward(&mut self, work : &Vec<WorkDone>) {
+        for work_done in work {
+            let body = &mut self.bodies[work_done.body_index];
+            euler_cromer_integrate(body, &work_done.force, &self.time_step);
         }
         self.time += self.time_step;
     }
 
-    pub fn do_work(&mut self) -> Vec<WorkDone>{
-        println!("ThreadPool worker running do_work();");
+    pub fn do_work(&self, id : usize) -> WorkDone {
+        println!("ThreadPool worker running do_work({});", id);
 
-        let mut work_done : Vec<WorkDone> = Vec::new();
-        for origin in &self.bodies {
+        let origin : &Body = &self.bodies[id];
+        let mut force : [f64 ; 3] = [0.0, 0.0, 0.0];
 
-            let mut force : [f64 ; 3] = [0.0, 0.0, 0.0];
-            for attractor in &self.bodies {
-                if origin.id == attractor.id {
-                    continue;
-                }
-                let f : [f64 ; 3] = self.compute_force(origin, attractor);
-                force = vector_sum(&force, &f);
-                let workdone = WorkDone {
-                    force : force,
-                    body_index : attractor.id
-                };
-                work_done.push(workdone);
+        for attractor in &self.bodies {
+            // A body does not attract itself
+            if id == attractor.id {
+                continue;
             }
 
-            
+            let f : [f64 ; 3] = self.compute_force(origin, attractor);
+            force = vector_sum(&force, &f);
         }
+
+        let work_done = WorkDone {
+            force : force,
+            body_index : id
+        };
 
         work_done
     }

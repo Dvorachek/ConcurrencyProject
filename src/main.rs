@@ -8,7 +8,7 @@ use thread_pool::ThreadPool;
 extern crate physics;
 use physics::Body;
 use physics::Simulator;
-
+use physics::WorkDone;
 
 fn main() {
 
@@ -27,29 +27,37 @@ fn main() {
         mass : 1.989e30
     };
 
-    let bodies : Vec<Body> = vec![sun, earth];
+    let bodies : Vec<Body> = vec![earth, sun];
 
     let mut sim = Simulator::new(bodies, 0.0, 60.0);
 
-    let pool = ThreadPool::new(5);
+    let pool = ThreadPool::new(2);
 
     // CHANNELS FOR RETURNING VALUES FROM THREADPOOL
     let (tx, rx) = mpsc::channel();
 
-    // TODO: RUN SIMULATOR WITH THREADPOOL
-    for _ in 0..24 {
-        let tx1 = mpsc::Sender::clone(&tx);
-        let mut cl = sim.clone();
+    // Run simulation for a number of steps
+    let number_simulation_steps = 2;
+    for _ in 0..number_simulation_steps {
+        // Compute work
+        for body in &sim.bodies {
+            let id = body.id.clone();
+            let tx1 = mpsc::Sender::clone(&tx);
+            let sim_clone = sim.clone();
+            pool.execute(move || {
+                let work = sim_clone.do_work(id);
+                tx1.send(work).unwrap();
+            });
+        }
 
-        pool.execute(move || {
-            let mut val = cl.do_work();
-            tx1.send(val).unwrap();
-        });
-    }
+        // Get computed work
+        let mut work_done : Vec<WorkDone> = vec![];
+        for _ in 0..sim.bodies.len() {
+            work_done.push(rx.recv().unwrap());
+        }
 
-    for _ in 0..24 {
-        let mut received = rx.recv().unwrap();
-        sim.step_forward(&mut received);
+        // Step simulation forward in time
+        sim.step_forward(&work_done);
         println!("sim time: {}", sim.time);
     }
 
@@ -68,4 +76,3 @@ fn wait() {
     thread::sleep(Duration::from_secs(4));
     println!("wait done!");
 }
-
