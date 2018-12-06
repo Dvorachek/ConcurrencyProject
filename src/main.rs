@@ -8,54 +8,9 @@ use physics::{Body, Simulator, WorkDone};
 
 fn main() {
 
-    // TESTING PHYSICS IMPORTS
-    let earth = Body {
-        id : 0,
-        position : [149597900000.0, 0.0, 0.0],
-        velocity : [0.0, 29800.0, 0.0],
-        mass : 5.972e24
-    };
-
-    let sun = Body {
-        id : 1,
-        position : [0.0, 0.0, 0.0],
-        velocity : [0.0, 0.0, 0.0],
-        mass : 1.989e30
-    };
-
-    let bodies : Vec<Body> = vec![earth, sun];
-
-    let mut sim = Simulator::new(bodies, 0.0, 60.0);
-
-    // CREATE CPUS FOR GENERATING LATENCY IN WORKER THREADS
-    let cpu1 = Computer {
-        mean : 0.0,
-        std : 1.0
-    };
-
-    let cpu2 = Computer {
-        mean : 1.0,
-        std : 1.0
-    };
-
-    let cpu3 = Computer {
-        mean : 1.0,
-        std : 2.0
-    };
-
-    let cpu4 = Computer {
-        mean : 2.0,
-        std : 2.0
-    };
-    
-    let cpu5 = Computer {
-        mean : 2.0,
-        std : 3.0
-    };
-
-    let cpus : Vec<Computer> = vec![cpu1, cpu2, cpu3, cpu4, cpu5];
-
-    let pool = ThreadPool::new(cpus);
+    // INIT SIMULATOR AND THREADPOOL
+    let mut sim = Simulator::new(bodies_init(), 0.0, 60.0);
+    let pool = ThreadPool::new(computers_init());
 
     // CHANNELS FOR RETURNING VALUES FROM THREADPOOL
     let (tx, rx) = mpsc::channel();
@@ -87,3 +42,51 @@ fn main() {
 
 }
 
+// PROBABLY OVERKILL, BUT COULD MAKE PUT IN -> impl Computer {
+fn computers_init() -> Vec<Computer> {
+
+    let cpu1 = Computer {
+        mean : 0.0,
+        std : 1.0
+    };
+
+    let cpu2 = Computer {
+        mean : 1.0,
+        std : 2.0
+    };
+
+    let cpu3 = Computer {
+        mean : 2.0,
+        std : 2.0
+    };
+    
+    let cpu4 = Computer {
+        mean : 2.0,
+        std : 3.0
+    };
+
+    let cpus : Vec<Computer> = vec![cpu1, cpu2, cpu3, cpu4];
+
+    cpus
+}
+
+fn bodies_init() -> Vec<Body> {
+
+    let earth = Body {
+        id : 0,
+        position : [149597900000.0, 0.0, 0.0],
+        velocity : [0.0, 29800.0, 0.0],
+        mass : 5.972e24
+    };
+
+    let sun = Body {
+        id : 1,
+        position : [0.0, 0.0, 0.0],
+        velocity : [0.0, 0.0, 0.0],
+        mass : 1.989e30
+    };
+
+    let bodies : Vec<Body> = vec![earth, sun];
+
+    bodies
+}
