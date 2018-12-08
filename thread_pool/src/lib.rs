@@ -1,5 +1,5 @@
 use std::thread;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 use std::sync::mpsc;
 use std::sync::Arc;
 use std::sync::Mutex;
@@ -11,6 +11,7 @@ use rand::distributions::{Normal, Distribution};
 pub struct Computer {
     pub mean : f64,
     pub std : f64,
+    pub work_time_increase_factor : f64,
 }
 
 trait FnBox {
@@ -98,6 +99,7 @@ impl Worker {
         Worker {
 
         let normal = Normal::new(cpu.mean, cpu.std);
+        let time_scale_factor = cpu.work_time_increase_factor.clone();
 
         let thread = thread::spawn(move ||{
             loop {
@@ -105,19 +107,29 @@ impl Worker {
 
                 match message {
                     Message::NewJob(job) => {
-                        println!("Worker {} got a job; executing.", id);
+                        //println!("Worker {} got a job; executing.", id);
 
-                        let mut v = normal.sample(&mut rand::thread_rng());
-                        // we need v to be a positive value
-                        while v < 0.0 {
-                            v = normal.sample(&mut rand::thread_rng());
+                        let mut latency = normal.sample(&mut rand::thread_rng());
+                        // Need latency to be positive
+                        while latency < 0.0 {
+                            latency = normal.sample(&mut rand::thread_rng());
                         }
-                        println!("Sleeping worker {} with normal distributed latency {}", id, v);
+                        println!("Sleeping worker {} with normal distributed latency {}", id, latency);
 
-                        // parse v (currently f64) as u64
-                        thread::sleep(Duration::from_secs(v as u64));
+                        // Split latency into seconds and milliseconds required by Duration
+                        let secs_to_millisecs = 1000.0;
+                        let mut secs = latency.floor();
+                        let mut millisecs = (latency - secs) * secs_to_millisecs;
+                        thread::sleep(Duration::new(secs as u64, millisecs as u32));
 
+                        let start = Instant::now();
                         job.call_box();
+
+                        let end = Instant::now().duration_since(start);
+                        secs = end.as_secs() as f64 * time_scale_factor;
+                        millisecs = end.subsec_millis() as f64 * time_scale_factor;
+                        let extra_time = Duration::new(secs as u64, millisecs as u32);
+                        thread::sleep(extra_time);
                     },
                     Message::Terminate => {
                         println!("Worker {} was told to terminate.", id);
