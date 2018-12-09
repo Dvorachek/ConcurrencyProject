@@ -24,7 +24,7 @@ fn main() {
             let tx1 = mpsc::Sender::clone(&tx);
             let sim_clone = sim.clone();
             pool.execute(move || {
-                let work = sim_clone.do_work(id);
+                let work = sim_clone.do_work(vec![id]);
                 tx1.send(work).unwrap();
             });
         }
@@ -32,7 +32,7 @@ fn main() {
         // Get computed work
         let mut work_done : Vec<WorkDone> = vec![];
         for _ in 0..sim.bodies.len() {
-            work_done.push(rx.recv().unwrap());
+            work_done.append(&mut rx.recv().unwrap());
         }
 
         // Step simulation forward in time

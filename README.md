@@ -4,8 +4,6 @@ cargo run to execute src/main.rs
 ## TODO:
 see src/main.rs
 
-Allow do_work() to take and return multiple pieces of work
-
 Add procedural generation of bodies
 
 Add metric tracking (total run time, per cpu time spent on delays, cpu idle time, etc)

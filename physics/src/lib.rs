@@ -45,27 +45,28 @@ impl Simulator {
         self.time += self.time_step;
     }
 
-    pub fn do_work(&self, id : usize) -> WorkDone {
-        println!("ThreadPool worker running do_work({});", id);
+    pub fn do_work(&self, ids : Vec<usize>) -> Vec<WorkDone> {
+        let mut work_done : Vec<WorkDone> = Vec::new();
 
-        let origin : &Body = &self.bodies[id];
-        let mut force : [f64 ; 3] = [0.0, 0.0, 0.0];
+        for id in ids {
+            let origin : &Body = &self.bodies[id];
+            let mut force : [f64 ; 3] = [0.0, 0.0, 0.0];
 
-        for attractor in &self.bodies {
-            // A body does not attract itself
-            if id == attractor.id {
-                continue;
+            for attractor in &self.bodies {
+                // A body does not attract itself
+                if id == attractor.id {
+                    continue;
+                }
+
+                let f : [f64 ; 3] = self.compute_force(origin, attractor);
+                force = vector_sum(&force, &f);
             }
 
-            let f : [f64 ; 3] = self.compute_force(origin, attractor);
-            force = vector_sum(&force, &f);
+            work_done.push(WorkDone {
+                force : force,
+                body_index : id
+            });
         }
-
-        let work_done = WorkDone {
-            force : force,
-            body_index : id
-        };
-
         work_done
     }
 }
