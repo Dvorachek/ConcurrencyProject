@@ -141,16 +141,14 @@ impl Worker {
 
                         job.call_box();
 
-                        work_times.push(Instant::now().duration_since(start));
-                        latency_sleeps.push(latency);
-
-                        /* Not actually going to work as intended.. Commenting until fixed
-                        //let end = Instant::now().duration_since(start);
+                        let end = Instant::now().duration_since(start);
                         secs = end.as_secs() as f64 * time_scale_factor;
                         millisecs = end.subsec_millis() as f64 * time_scale_factor;
                         let extra_time = Duration::new(secs as u64, millisecs as u32);
                         thread::sleep(extra_time);
-                        */
+
+                        work_times.push(Instant::now().duration_since(start));
+                        latency_sleeps.push(latency);            
                     },
                     Message::Terminate => {
                         let thread_end = Instant::now().duration_since(thread_start);
