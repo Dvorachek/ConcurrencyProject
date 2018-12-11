@@ -32,6 +32,7 @@ enum Message {
 }
 
 
+#[derive(Debug)]
 pub struct ThreadPool {
     workers: Vec<Worker>,
     sender: mpsc::Sender<Message>,
@@ -66,6 +67,10 @@ impl ThreadPool {
             sender,
         }
     }
+
+    //pub fn execute_specific_worker() {
+
+    //}
 }
 
 impl Drop for ThreadPool {
@@ -79,7 +84,7 @@ impl Drop for ThreadPool {
         println!("Shutting down all workers.");
 
         for worker in &mut self.workers {
-            println!("Shutting down worker {}", worker.id);
+            //println!("Shutting down worker {}", worker.id);
 
             if let Some(thread) = worker.thread.take() {
                 thread.join().unwrap();
@@ -89,14 +94,22 @@ impl Drop for ThreadPool {
 }
 
 
+#[derive(Debug)]
 struct Worker {
     id: usize,
     thread: Option<thread::JoinHandle<()>>,
+    //start_time: f64,
+
 }
 
 impl Worker {
     fn new(id: usize, receiver: Arc<Mutex<mpsc::Receiver<Message>>>, cpu: &Computer) ->
         Worker {
+
+        let thread_start = Instant::now();
+        let mut work_times : Vec<Duration> = Vec::new();
+        let mut latency_sleeps : Vec<f64> = Vec::new();
+        
 
         let normal = Normal::new(cpu.mean, cpu.std);
         let time_scale_factor = cpu.work_time_increase_factor.clone();
@@ -114,7 +127,9 @@ impl Worker {
                         while latency < 0.0 {
                             latency = normal.sample(&mut rand::thread_rng());
                         }
+                        //for testing
                         println!("Sleeping worker {} with normal distributed latency {}", id, latency);
+                        thread::sleep(Duration::from_secs(latency as u64));
 
                         // Split latency into seconds and milliseconds required by Duration
                         let secs_to_millisecs = 1000.0;
@@ -123,16 +138,39 @@ impl Worker {
                         thread::sleep(Duration::new(secs as u64, millisecs as u32));
 
                         let start = Instant::now();
+
                         job.call_box();
 
-                        let end = Instant::now().duration_since(start);
+                        work_times.push(Instant::now().duration_since(start));
+                        latency_sleeps.push(latency);
+
+                        /* Not actually going to work as intended.. Commenting until fixed
+                        //let end = Instant::now().duration_since(start);
                         secs = end.as_secs() as f64 * time_scale_factor;
                         millisecs = end.subsec_millis() as f64 * time_scale_factor;
                         let extra_time = Duration::new(secs as u64, millisecs as u32);
                         thread::sleep(extra_time);
+                        */
                     },
                     Message::Terminate => {
-                        println!("Worker {} was told to terminate.", id);
+                        let thread_end = Instant::now().duration_since(thread_start);
+                        let mut time_idle = thread_end.clone();
+                        let mut time_working = Duration::new(0, 0);
+
+                        //convert to fold if time
+                        for time in work_times {
+                            time_idle = time_idle.checked_sub(time).unwrap();
+                            time_working = time_working.checked_add(time).unwrap();
+                        }
+
+                        let lag: f64 = latency_sleeps.iter().sum();
+
+                        println!("Worker {} terminating. Time alive: {:?}. Time idle: {:?}. Time working: {:?}. Total latency: {}",
+                            id,
+                            thread_end,
+                            time_idle,
+                            time_working,
+                            lag);
 
                         break;
                     },
