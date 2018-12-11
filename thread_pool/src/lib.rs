@@ -4,6 +4,7 @@ use std::sync::mpsc;
 use std::sync::Arc;
 use std::sync::Mutex;
 
+
 extern crate rand;
 use rand::distributions::{Normal, Distribution};
 
@@ -67,10 +68,6 @@ impl ThreadPool {
             sender,
         }
     }
-
-    //pub fn execute_specific_worker() {
-
-    //}
 }
 
 impl Drop for ThreadPool {
@@ -81,10 +78,8 @@ impl Drop for ThreadPool {
             self.sender.send(Message::Terminate).unwrap();
         }
 
-        println!("Shutting down all workers.");
-
         for worker in &mut self.workers {
-            //println!("Shutting down worker {}", worker.id);
+            println!("Shutting down worker {}", worker.id);
 
             if let Some(thread) = worker.thread.take() {
                 thread.join().unwrap();
@@ -98,8 +93,6 @@ impl Drop for ThreadPool {
 struct Worker {
     id: usize,
     thread: Option<thread::JoinHandle<()>>,
-    //start_time: f64,
-
 }
 
 impl Worker {
@@ -108,7 +101,7 @@ impl Worker {
 
         let thread_start = Instant::now();
         let mut work_times : Vec<Duration> = Vec::new();
-        let mut latency_sleeps : Vec<f64> = Vec::new();
+        let mut total_latency : Vec<f64> = Vec::new();
         
 
         let normal = Normal::new(cpu.mean, cpu.std);
@@ -116,6 +109,7 @@ impl Worker {
 
         let thread = thread::spawn(move ||{
             loop {
+
                 let message = receiver.lock().unwrap().recv().unwrap();
 
                 match message {
@@ -141,6 +135,7 @@ impl Worker {
 
                         job.call_box();
 
+                        
                         let end = Instant::now().duration_since(start);
                         secs = end.as_secs() as f64 * time_scale_factor;
                         millisecs = end.subsec_millis() as f64 * time_scale_factor;
@@ -148,7 +143,7 @@ impl Worker {
                         thread::sleep(extra_time);
 
                         work_times.push(Instant::now().duration_since(start));
-                        latency_sleeps.push(latency);            
+                        total_latency.push(latency);            
                     },
                     Message::Terminate => {
                         let thread_end = Instant::now().duration_since(thread_start);
@@ -161,7 +156,7 @@ impl Worker {
                             time_working = time_working.checked_add(time).unwrap();
                         }
 
-                        let lag: f64 = latency_sleeps.iter().sum();
+                        let lag: f64 = total_latency.iter().sum();
 
                         println!("Worker {} terminating. Time alive: {:?}. Time idle: {:?}. Time working: {:?}. Total latency: {}",
                             id,
@@ -173,6 +168,7 @@ impl Worker {
                         break;
                     },
                 }
+                
             }
         });
 
