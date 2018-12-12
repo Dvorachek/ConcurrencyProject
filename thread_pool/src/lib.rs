@@ -142,7 +142,7 @@ impl Worker {
 
                         let lag: f64 = total_latency.iter().sum();
 
-                        println!("Worker {} terminating. Time alive: {:?}. Time idle: {:?}. Time working: {:?}. Total latency: {}",
+                        println!("{},{:?},{:?},{:?},{}",
                             id,
                             thread_end,
                             time_idle,
