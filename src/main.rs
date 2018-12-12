@@ -1,4 +1,5 @@
 use std::sync::mpsc;
+use std::sync::mpsc::{Sender, Receiver};
 
 extern crate rand;
 use rand::distributions::{Exp, Distribution};
@@ -25,14 +26,20 @@ fn main() {
     let mean_planets = 10.0;
     let mean_others = 20.0;
     let bodies = generate_bodies(mean_stars, mean_planets, mean_others);
-    let mut sim = Simulator::new(bodies, 0.0, DAY);
-    let pool = ThreadPool::new(computers_init());
+    let sim = Simulator::new(bodies, 0.0, DAY);
+    let thread_pool = ThreadPool::new(computers_init());
 
+    let chunk_size = sim.bodies.len() / 4;
+
+    render(chunk_size, sim, thread_pool);
+}
+
+fn render(chunk_size: usize, mut sim: Simulator, thread_pool: ThreadPool) {
     // CHANNELS FOR RETURNING VALUES FROM THREADPOOL
     let (tx, rx) = mpsc::channel();
 
     // INIT PISTONWINDOW
-    let mut window: PistonWindow = 
+    let mut window: PistonWindow =
         WindowSettings::new(
             "piston: draw_state",
             Size {
@@ -41,50 +48,57 @@ fn main() {
             },
         ).exit_on_esc(true).build().unwrap();
 
+    // piston window lazy means that only events will tricker a step
     window.set_lazy(false);
 
     // LOOP DRAWING
     while let Some(e) = window.next() {
-
-        let chunk_size = 2000;
-        let mut bodies = sim.bodies.clone();
-
         // DRAW HERE
         window.draw_2d(&e, |c, g| {
             clear([0.129, 0.1468, 0.168, 1.0], g);
             g.clear_stencil(0);
-            
-            // Compute work
-            let mut ids : Vec<usize> = Vec::new();
-            for chunk in bodies.chunks(chunk_size) {
-                for body in chunk {
-                    ids.push(body.id.clone());
-                }
-                let tx1 = mpsc::Sender::clone(&tx);
-                let sim_clone = sim.clone();
-                let ids_clone = ids.clone();
-                pool.execute(move || {
-                    let work = sim_clone.do_work(ids_clone);
-                    tx1.send(work).unwrap();
-                });
-                ids = Vec::new();
-            }
 
-            // Get computed work
-            let mut work_done : Vec<WorkDone> = vec![];
-            while work_done.len() < sim.bodies.len() {
-                work_done.append(&mut rx.recv().unwrap());
-            }
+            let work_done = distribute_work(&thread_pool, &sim, chunk_size.clone(), &tx, &rx);
 
             // Step simulation forward in time
             sim.step_forward(&work_done);
-            //println!("sim time: {}", sim.time);
 
             for body in &sim.bodies {
                 draw_body(&body, c, g);
             }
         });
     }
+}
+
+fn distribute_work(threadpool: &ThreadPool,
+                   sim: &Simulator,
+                   chunk_size: usize,
+                   tx: &Sender<Vec<WorkDone>>,
+                   rx: &Receiver<Vec<WorkDone>>) -> Vec<WorkDone> {
+    // Distribute work
+    let mut ids : Vec<usize> = Vec::new();
+    for chunk in sim.bodies.chunks(chunk_size) {
+        for body in chunk {
+            ids.push(body.id.clone());
+        }
+
+        let tx1 = mpsc::Sender::clone(tx);
+        let sim_clone = sim.clone();
+        threadpool.execute(move || {
+            let work = sim_clone.do_work(ids.clone());
+            tx1.send(work).unwrap();
+        });
+
+        ids = Vec::new();
+    }
+
+    // Get computed work
+    let mut work_done : Vec<WorkDone> = vec![];
+    while work_done.len() < sim.bodies.len() {
+        work_done.append(&mut rx.recv().unwrap());
+    }
+
+    work_done
 }
 
 fn draw_body(body: &Body, c: Context, g: &mut G2d) {
@@ -136,7 +150,7 @@ fn generate_bodies(mean_stars: f64, mean_planets: f64, mean_others: f64) -> Vec<
     let stellar_dist_scale : f64 = 1.0;
     let stellar_colour : [f32; 4] = [255.0, 255.0, 0.0, 1.0];
     let stellar_radius : f64 = 15.0;
-    
+
     let earth_mass : f64 = 5.972e24 * 50.0;
     let planet_v_scale : f64 = 30000.0;
     let planet_dist_scale : f64 = 8.0;
@@ -149,7 +163,7 @@ fn generate_bodies(mean_stars: f64, mean_planets: f64, mean_others: f64) -> Vec<
     let other_colour : [f32; 4] = [0.298039, 0.7705882, 0.411765, 1.0];
     let other_radius : f64 = 8.0;
 
-    
+
     bodies.append(&mut make_body_vec(stellar_mass,
         mean_stars,
         stellar_v_scale,
