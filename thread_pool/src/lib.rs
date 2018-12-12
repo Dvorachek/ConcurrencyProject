@@ -114,38 +114,22 @@ impl Worker {
 
                 match message {
                     Message::NewJob(job) => {
-                        //println!("Worker {} got a job; executing.", id);
 
-                        let mut latency = normal.sample(&mut rand::thread_rng());
-                        // Need latency to be positive
-                        while latency < 0.0 {
-                            latency = normal.sample(&mut rand::thread_rng());
-                        }
-                        //for testing
-                        println!("Sleeping worker {} with normal distributed latency {}", id, latency);
-                        //thread::sleep(Duration::from_secs(latency as u64));
+                        let latency = generate_latency(&normal);
 
-                        // Split latency into seconds and milliseconds required by Duration
-                        let secs_to_millisecs = 1000.0;
-                        let mut secs = latency.floor();
-                        let mut millisecs = (latency - secs) * secs_to_millisecs;
-                        //thread::sleep(Duration::new(secs as u64, millisecs as u32));
-
-                        let start = Instant::now();
+                        // measures time working
+                        let start_working = Instant::now();
 
                         job.call_box();
 
-                        
-                        let end = Instant::now().duration_since(start);
-                        secs = end.as_secs() as f64 * time_scale_factor;
-                        millisecs = end.subsec_millis() as f64 * time_scale_factor;
-                        let extra_time = Duration::new(secs as u64, millisecs as u32);
-                        //thread::sleep(extra_time);
+                        extend_time_spent_working(Instant::now().duration_since(start_working), time_scale_factor);
 
-                        work_times.push(Instant::now().duration_since(start));
+                        work_times.push(Instant::now().duration_since(start_working));
                         total_latency.push(latency);            
                     },
                     Message::Terminate => {
+                        // worker stat collection and shutdown
+
                         let thread_end = Instant::now().duration_since(thread_start);
                         let mut time_idle = thread_end.clone();
                         let mut time_working = Duration::new(0, 0);
@@ -177,5 +161,31 @@ impl Worker {
             thread: Some(thread),
         }
     }
+
 }
 
+fn generate_latency(normal: &Normal) -> f64 {
+    let mut latency = normal.sample(&mut rand::thread_rng());
+    while latency < 0.0 {
+        latency = normal.sample(&mut rand::thread_rng());
+    }
+
+    //for testing
+    //println!("Sleeping worker {} with normal distributed latency {}", id, latency);
+
+    let secs_to_millisecs = 1000.0;
+    let secs = latency.floor();
+    let millisecs = (latency - secs) * secs_to_millisecs;
+
+    //thread::sleep(Duration::new(secs as u64, millisecs as u32));
+
+    latency
+}
+
+fn extend_time_spent_working(end: Duration, time_scale_factor: f64) {
+    let secs = end.as_secs() as f64 * time_scale_factor;
+    let millisecs = end.subsec_millis() as f64 * time_scale_factor;
+    let extra_time = Duration::new(secs as u64, millisecs as u32);
+
+    //thread::sleep(extra_time);
+}
