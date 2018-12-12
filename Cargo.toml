@@ -15,3 +15,4 @@ members = [
 
 physics = { path = "./physics" }
 thread_pool = { path = "./thread_pool" }
+rand = "0.6"
