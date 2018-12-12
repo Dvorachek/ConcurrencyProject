@@ -187,5 +187,5 @@ fn extend_time_spent_working(end: Duration, time_scale_factor: f64) {
     let millisecs = end.subsec_millis() as f64 * time_scale_factor;
     let extra_time = Duration::new(secs as u64, millisecs as u32);
 
-    //thread::sleep(extra_time);
+    thread::sleep(extra_time);
 }

@@ -1,8 +1,8 @@
 use std::sync::mpsc;
 use std::sync::mpsc::{Sender, Receiver};
+use std::env;
 
 extern crate rand;
-use rand::distributions::{Exp, Distribution};
 use rand::Rng;
 
 extern crate thread_pool;
@@ -21,17 +21,49 @@ const DIMENSION: u32 = 1000;
 const DAY: f64 = 24.0 * 3600.0;
 
 fn main() {
-    // INIT SIMULATOR AND THREADPOOL
-    let mean_stars = 2.0;
-    let mean_planets = 10.0;
-    let mean_others = 20.0;
-    let bodies = generate_bodies(mean_stars, mean_planets, mean_others);
-    let sim = Simulator::new(bodies, 0.0, DAY);
-    let thread_pool = ThreadPool::new(computers_init());
+    // Parse command line parameters
+    let args: Vec<String> = env::args().collect();
 
-    let chunk_size = sim.bodies.len() / 4;
+    if args.len() != 2 {
+        return;
+    }
 
-    render(chunk_size, sim, thread_pool);
+    let mode = &args[1];
+    let time_step = DAY;
+
+    if mode == "render" {
+        let num_stars = 1;
+        let num_planets = 10;
+        let num_others = 60;
+
+        let bodies = generate_bodies(num_stars, num_planets, num_others);
+        let sim = Simulator::new(bodies, 0.0, time_step);
+
+        let chunk_size = sim.bodies.len() / 4;
+        let thread_pool = ThreadPool::new(computers_init());
+
+        render(chunk_size, sim, thread_pool);
+    } else if mode == "data" {
+        let num_stars = 1;
+        let num_planets = 600;
+        let num_others = 600;
+
+        let bodies = generate_bodies(num_stars, num_planets, num_others);
+        let num_steps = 10;
+
+        for chunk_size in (5..300).step_by(5) {
+            println!();
+            println!("Chunk size: {}", chunk_size);
+            println!("id,time_alive,time_idle,time_working,total_latency");
+            let (tx, rx) = mpsc::channel();
+            let mut thread_pool = ThreadPool::new(computers_init());
+            let mut sim = Simulator::new(bodies.clone(), 0.0, time_step);
+            for _ in 0..num_steps {
+                let work_done = distribute_work(&thread_pool, &sim, chunk_size.clone(), &tx, &rx);
+                sim.step_forward(&work_done);
+            }
+        }
+    }
 }
 
 fn render(chunk_size: usize, mut sim: Simulator, thread_pool: ThreadPool) {
@@ -155,7 +187,7 @@ fn computers_init() -> Vec<Computer> {
     cpus
 }
 
-fn generate_bodies(mean_stars: f64, mean_planets: f64, mean_others: f64) -> Vec<Body> {
+fn generate_bodies(num_stars: i64, num_planets: i64, num_others: i64) -> Vec<Body> {
     let mut bodies : Vec<Body> = Vec::new();
 
     // ADJUST PARAM HERE
@@ -175,23 +207,23 @@ fn generate_bodies(mean_stars: f64, mean_planets: f64, mean_others: f64) -> Vec<
     let other_v_scale : f64 = 300.0;
     let other_dist_scale : f64 = 16.0;
     let other_colour : [f32; 4] = [0.298039, 0.7705882, 0.411765, 1.0];
-    let other_radius : f64 = 8.0;
+    let other_radius : f64 = 4.0;
 
 
     bodies.append(&mut make_body_vec(stellar_mass,
-        mean_stars,
+        num_stars,
         stellar_v_scale,
         stellar_dist_scale,
         stellar_colour,
         stellar_radius));
     bodies.append(&mut make_body_vec(earth_mass,
-        mean_planets,
+        num_planets,
         planet_v_scale,
         planet_dist_scale,
         planet_colour,
         planet_radius));
     bodies.append(&mut make_body_vec(other_mass,
-        mean_others,
+        num_others,
         other_v_scale,
         other_dist_scale,
         other_colour,
@@ -207,12 +239,9 @@ fn generate_bodies(mean_stars: f64, mean_planets: f64, mean_others: f64) -> Vec<
     bodies
 }
 
-fn make_body_vec(mass: f64, mean: f64, velocity_scale: f64, distance_scale: f64, colour: [f32; 4], radius: f64) -> Vec<Body> {
+fn make_body_vec(mass: f64, number_of_bodies: i64, velocity_scale: f64, distance_scale: f64, colour: [f32; 4], radius: f64) -> Vec<Body> {
     let mut bodies : Vec<Body> = Vec::new();
     let mut rng = rand::thread_rng();
-
-    let exp = Exp::new(mean.powf(-1.0));
-    let number_of_bodies = exp.sample(&mut rand::thread_rng()).ceil() as usize;
 
     for _ in 0..number_of_bodies {
         let x : f64 = distance_scale * (-1.0 + 2.0 * rng.gen::<f64>()) * AU;
@@ -227,7 +256,7 @@ fn make_body_vec(mass: f64, mean: f64, velocity_scale: f64, distance_scale: f64,
             id : 0,
             position : [x, y, z],
             velocity : [vx, vy, vz],
-            mass : exp.sample(&mut rand::thread_rng()) * mass,
+            mass : (0.25 + 10.0* rng.gen::<f64>()) * mass,
             colour : colour,
             radius : radius,
         };
