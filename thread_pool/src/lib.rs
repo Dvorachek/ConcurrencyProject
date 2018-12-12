@@ -72,14 +72,14 @@ impl ThreadPool {
 
 impl Drop for ThreadPool {
     fn drop(&mut self) {
-        println!("Sending terminate message to all workers.");
+        //println!("Sending terminate message to all workers.");
 
         for _ in &mut self.workers {
             self.sender.send(Message::Terminate).unwrap();
         }
 
         for worker in &mut self.workers {
-            println!("Shutting down worker {}", worker.id);
+            //println!("Shutting down worker {}", worker.id);
 
             if let Some(thread) = worker.thread.take() {
                 thread.join().unwrap();
@@ -102,7 +102,7 @@ impl Worker {
         let thread_start = Instant::now();
         let mut work_times : Vec<Duration> = Vec::new();
         let mut total_latency : Vec<f64> = Vec::new();
-        
+
 
         let normal = Normal::new(cpu.mean, cpu.std);
         let time_scale_factor = cpu.work_time_increase_factor.clone();
@@ -125,7 +125,7 @@ impl Worker {
                         extend_time_spent_working(Instant::now().duration_since(start_working), time_scale_factor);
 
                         work_times.push(Instant::now().duration_since(start_working));
-                        total_latency.push(latency);            
+                        total_latency.push(latency);
                     },
                     Message::Terminate => {
                         // worker stat collection and shutdown
@@ -152,7 +152,7 @@ impl Worker {
                         break;
                     },
                 }
-                
+
             }
         });
 
