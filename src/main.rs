@@ -173,8 +173,8 @@ fn generate_bodies(mean_stars: f64, mean_planets: f64, mean_others: f64) -> Vec<
     let number_of_planets = exp.sample(&mut rand::thread_rng()).ceil() as usize;
     velocity_scale = 30000.0;
     for _ in 0..number_of_planets {
-        let x : f64 = 4.0 * (-1.0 + 2.0 * rng.gen::<f64>()) * au;
-        let y : f64 = 4.0 * (-1.0 + 2.0 * rng.gen::<f64>()) * au;
+        let x : f64 = 8.0 * (-1.0 + 2.0 * rng.gen::<f64>()) * au;
+        let y : f64 = 8.0 * (-1.0 + 2.0 * rng.gen::<f64>()) * au;
         let z : f64 = 0.01 * (-1.0 + 2.0 * rng.gen::<f64>()) * au;
 
         let vx : f64 = (-1.0 + 2.0 * rng.gen::<f64>()) * velocity_scale;
@@ -196,8 +196,8 @@ fn generate_bodies(mean_stars: f64, mean_planets: f64, mean_others: f64) -> Vec<
     let number_of_other = exp.sample(&mut rand::thread_rng()).ceil() as usize;
     velocity_scale = 300.0;
     for _ in 0..number_of_other {
-        let x : f64 = (-1.0 + 2.0 * rng.gen::<f64>()) * au;
-        let y : f64 = (-1.0 + 2.0 * rng.gen::<f64>()) * au;
+        let x : f64 = 16.0 * (-1.0 + 2.0 * rng.gen::<f64>()) * au;
+        let y : f64 = 16.0 * (-1.0 + 2.0 * rng.gen::<f64>()) * au;
         let z : f64 = 0.01 * (-1.0 + 2.0 * rng.gen::<f64>()) * au;
 
         let vx : f64 = (-1.0 + 2.0 * rng.gen::<f64>()) * velocity_scale;
