@@ -123,13 +123,13 @@ impl Worker {
                         }
                         //for testing
                         println!("Sleeping worker {} with normal distributed latency {}", id, latency);
-                        thread::sleep(Duration::from_secs(latency as u64));
+                        //thread::sleep(Duration::from_secs(latency as u64));
 
                         // Split latency into seconds and milliseconds required by Duration
                         let secs_to_millisecs = 1000.0;
                         let mut secs = latency.floor();
                         let mut millisecs = (latency - secs) * secs_to_millisecs;
-                        thread::sleep(Duration::new(secs as u64, millisecs as u32));
+                        //thread::sleep(Duration::new(secs as u64, millisecs as u32));
 
                         let start = Instant::now();
 
@@ -140,7 +140,7 @@ impl Worker {
                         secs = end.as_secs() as f64 * time_scale_factor;
                         millisecs = end.subsec_millis() as f64 * time_scale_factor;
                         let extra_time = Duration::new(secs as u64, millisecs as u32);
-                        thread::sleep(extra_time);
+                        //thread::sleep(extra_time);
 
                         work_times.push(Instant::now().duration_since(start));
                         total_latency.push(latency);            
@@ -178,3 +178,4 @@ impl Worker {
         }
     }
 }
+
