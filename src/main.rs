@@ -1,5 +1,9 @@
 use std::sync::mpsc;
 
+extern crate rand;
+use rand::distributions::{Exp, Distribution};
+use rand::Rng;
+
 extern crate thread_pool;
 use thread_pool::{ThreadPool, Computer};
 
@@ -18,7 +22,11 @@ const HALF: f64 = AU * 10.0;
 fn main() {
 
     // INIT SIMULATOR AND THREADPOOL
-    let mut sim = Simulator::new(bodies_init(), 0.0, 500.0);
+    let mean_stars = 2.0;
+    let mean_planets = 1.0;
+    let mean_others = 2.0;
+    let bodies = generate_bodies(mean_stars, mean_planets, mean_others);
+    let mut sim = Simulator::new(bodies, 0.0, 100.0);
     let pool = ThreadPool::new(computers_init());
 
     // CHANNELS FOR RETURNING VALUES FROM THREADPOOL
@@ -43,6 +51,8 @@ fn main() {
         // Run simulation for a number of steps
         let number_simulation_steps = 1000;
         for _ in 0..number_simulation_steps {
+            let chunk_size = 2;
+            let mut bodies = sim.bodies.clone();
 
             // DRAW HERE
             window.draw_2d(&e, |c, g| {
@@ -50,22 +60,24 @@ fn main() {
                 g.clear_stencil(0);
 
                 // Compute work
-                for body in &sim.bodies {
-
-                    //draw_body(&body, c, g);
-
-                    let id = body.id.clone();
+                let mut ids : Vec<usize> = Vec::new();
+                for chunk in bodies.chunks(chunk_size) {
+                    for body in chunk {
+                        ids.push(body.id.clone());
+                    }
                     let tx1 = mpsc::Sender::clone(&tx);
                     let sim_clone = sim.clone();
+                    let ids_clone = ids.clone();
                     pool.execute(move || {
-                        let work = sim_clone.do_work(vec![id]);
+                        let work = sim_clone.do_work(ids_clone);
                         tx1.send(work).unwrap();
                     });
+                    ids = Vec::new();
                 }
 
                 // Get computed work
                 let mut work_done : Vec<WorkDone> = vec![];
-                for _ in 0..sim.bodies.len() {
+                while work_done.len() < sim.bodies.len() {
                     work_done.append(&mut rx.recv().unwrap());
                 }
 
@@ -79,9 +91,6 @@ fn main() {
             });
         }
     }
-
-    
-
 }
 
 fn draw_body(body: &Body, c: Context, g: &mut G2d) {
@@ -125,23 +134,87 @@ fn computers_init() -> Vec<Computer> {
     cpus
 }
 
-fn bodies_init() -> Vec<Body> {
+fn generate_bodies(mean_stars: f64, mean_planets: f64, mean_others: f64) -> Vec<Body> {
+    let mut bodies : Vec<Body> = Vec::new();
+    let stellar_mass : f64 = 1.989e30;
+    let au : f64 = 1.49597e11;
+    let mut rng = rand::thread_rng();
 
-    let earth = Body {
-        id : 0,
-        position : [HALF - AU, HALF, 0.0],
-        velocity : [0.0, 29800.0, 0.0],
-        mass : 5.972e24
-    };
+    // Generate stars
+    let mut exp = Exp::new(mean_stars.powf(-1.0));
+    let number_of_stars = exp.sample(&mut rand::thread_rng()).ceil() as usize;
 
-    let sun = Body {
-        id : 1,
-        position : [HALF, HALF, 0.0],
-        velocity : [0.0, 0.0, 0.0],
-        mass : 1.989e30
-    };
+    let mut velocity_scale = 3000.0;
+    for _ in 0..number_of_stars {
+        let x : f64 = (-1.0 + 2.0 * rng.gen::<f64>()) * au;
+        let y : f64 = (-1.0 + 2.0 * rng.gen::<f64>()) * au;
+        let z : f64 = 0.01 * (-1.0 + 2.0 * rng.gen::<f64>()) * au;
 
-    let bodies : Vec<Body> = vec![earth, sun];
+        let vx : f64 = (-1.0 + 2.0 * rng.gen::<f64>()) * velocity_scale;
+        let vy : f64 = (-1.0 + 2.0 * rng.gen::<f64>()) * velocity_scale;
+        let vz : f64 = 0.01 * (-1.0 + 2.0 * rng.gen::<f64>()) * velocity_scale;
 
+        let body = Body {
+            id : 0,
+            position : [x, y, z],
+            velocity : [vx, vy, vz],
+            mass : 5.0 * exp.sample(&mut rand::thread_rng()) * stellar_mass
+        };
+        bodies.push(body);
+    }
+
+    // Generate planets
+    exp = Exp::new(mean_planets.powf(-1.0));
+    let earth_mass : f64 = 5.972e24;
+    let number_of_planets = exp.sample(&mut rand::thread_rng()).ceil() as usize;
+    velocity_scale = 30000.0;
+    for _ in 0..number_of_planets {
+        let x : f64 = 4.0 * (-1.0 + 2.0 * rng.gen::<f64>()) * au;
+        let y : f64 = 4.0 * (-1.0 + 2.0 * rng.gen::<f64>()) * au;
+        let z : f64 = 0.01 * (-1.0 + 2.0 * rng.gen::<f64>()) * au;
+
+        let vx : f64 = (-1.0 + 2.0 * rng.gen::<f64>()) * velocity_scale;
+        let vy : f64 = (-1.0 + 2.0 * rng.gen::<f64>()) * velocity_scale;
+        let vz : f64 = 0.01 * (-1.0 + 2.0 * rng.gen::<f64>()) * velocity_scale;
+
+        let body = Body {
+            id : 0,
+            position : [x, y, z],
+            velocity : [vx, vy, vz],
+            mass : 50.0 * exp.sample(&mut rand::thread_rng()) * earth_mass
+        };
+        bodies.push(body);
+    }
+
+    // Generate small bodies
+    exp = Exp::new(mean_others.powf(-1.0));
+    let other_mass : f64 = 2.0e15;
+    let number_of_other = exp.sample(&mut rand::thread_rng()).ceil() as usize;
+    velocity_scale = 300.0;
+    for _ in 0..number_of_other {
+        let x : f64 = (-1.0 + 2.0 * rng.gen::<f64>()) * au;
+        let y : f64 = (-1.0 + 2.0 * rng.gen::<f64>()) * au;
+        let z : f64 = 0.01 * (-1.0 + 2.0 * rng.gen::<f64>()) * au;
+
+        let vx : f64 = (-1.0 + 2.0 * rng.gen::<f64>()) * velocity_scale;
+        let vy : f64 = (-1.0 + 2.0 * rng.gen::<f64>()) * velocity_scale;
+        let vz : f64 = 0.01 * (-1.0 + 2.0 * rng.gen::<f64>()) * velocity_scale;
+
+        let body = Body {
+            id : 0,
+            position : [x, y, z],
+            velocity : [vx, vy, vz],
+            mass : 5.0e5 * exp.sample(&mut rand::thread_rng()) * other_mass
+        };
+        bodies.push(body);
+    }
+
+    // Ensure high mass bodies are near the end
+    bodies.reverse();
+    let mut id : usize = 0;
+    for body in &mut bodies {
+        body.id = id.clone();
+        id += 1;
+    }
     bodies
 }
