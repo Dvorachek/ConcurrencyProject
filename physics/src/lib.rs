@@ -5,7 +5,9 @@ pub struct Body {
     pub id : usize,
     pub position : [f64 ; 3],
     pub velocity : [f64 ; 3],
-    pub mass : f64
+    pub mass : f64,
+    pub colour : [f32; 4],
+    pub radius : f64
 }
 
 #[derive(Clone)]

@@ -26,7 +26,7 @@ fn main() {
     let mean_planets = 10.0;
     let mean_others = 20.0;
     let bodies = generate_bodies(mean_stars, mean_planets, mean_others);
-    let mut sim = Simulator::new(bodies, 0.0, 100.0);
+    let mut sim = Simulator::new(bodies, 0.0, 10000.0);
     let pool = ThreadPool::new(computers_init());
 
     // CHANNELS FOR RETURNING VALUES FROM THREADPOOL
@@ -47,61 +47,53 @@ fn main() {
 
     // LOOP DRAWING
     while let Some(e) = window.next() {
-   
-        // Run simulation for a number of steps
-        //let number_simulation_steps = 1000;
-        //for i in 0..number_simulation_steps {
-            let chunk_size = 2;
-            let mut bodies = sim.bodies.clone();
 
-            // DRAW HERE
-            window.draw_2d(&e, |c, g| {
-                clear([0.129, 0.1468, 0.168, 1.0], g); // ?????
-                g.clear_stencil(0);
-                
+        let chunk_size = 2;
+        let mut bodies = sim.bodies.clone();
 
-                // Compute work
-                let mut ids : Vec<usize> = Vec::new();
-                for chunk in bodies.chunks(chunk_size) {
-                    for body in chunk {
-                        ids.push(body.id.clone());
-                    }
-                    let tx1 = mpsc::Sender::clone(&tx);
-                    let sim_clone = sim.clone();
-                    let ids_clone = ids.clone();
-                    pool.execute(move || {
-                        let work = sim_clone.do_work(ids_clone);
-                        tx1.send(work).unwrap();
-                    });
-                    ids = Vec::new();
+        // DRAW HERE
+        window.draw_2d(&e, |c, g| {
+            clear([0.129, 0.1468, 0.168, 1.0], g); // ?????
+            g.clear_stencil(0);
+            
+            // Compute work
+            let mut ids : Vec<usize> = Vec::new();
+            for chunk in bodies.chunks(chunk_size) {
+                for body in chunk {
+                    ids.push(body.id.clone());
                 }
+                let tx1 = mpsc::Sender::clone(&tx);
+                let sim_clone = sim.clone();
+                let ids_clone = ids.clone();
+                pool.execute(move || {
+                    let work = sim_clone.do_work(ids_clone);
+                    tx1.send(work).unwrap();
+                });
+                ids = Vec::new();
+            }
 
-                // Get computed work
-                let mut work_done : Vec<WorkDone> = vec![];
-                while work_done.len() < sim.bodies.len() {
-                    work_done.append(&mut rx.recv().unwrap());
-                }
+            // Get computed work
+            let mut work_done : Vec<WorkDone> = vec![];
+            while work_done.len() < sim.bodies.len() {
+                work_done.append(&mut rx.recv().unwrap());
+            }
 
-                // Step simulation forward in time
-                sim.step_forward(&work_done);
-                println!("sim time: {}", sim.time);
+            // Step simulation forward in time
+            sim.step_forward(&work_done);
+            println!("sim time: {}", sim.time);
 
-
-                for body in &sim.bodies {
-                    draw_body(&body, c, g);
-                }
-
-
-            });
-        //}
+            for body in &sim.bodies {
+                draw_body(&body, c, g);
+            }
+        });
     }
 }
 
 fn draw_body(body: &Body, c: Context, g: &mut G2d) {
-    Ellipse::new([255.0, 255.0, 0.0, 1.0]) // color
+    Ellipse::new(body.colour) // colour
         .draw(
             [body.position[0] * SCALE + 500.0, body.position[1] * SCALE + 500.0,
-                15.0, 15.0],  // radius radius
+                body.radius, body.radius],  // radius radius
             &c.draw_state, c.transform, g
         );
 }
@@ -162,7 +154,9 @@ fn generate_bodies(mean_stars: f64, mean_planets: f64, mean_others: f64) -> Vec<
             id : 0,
             position : [x, y, z],
             velocity : [vx, vy, vz],
-            mass : 5.0 * exp.sample(&mut rand::thread_rng()) * stellar_mass
+            mass : 5.0 * exp.sample(&mut rand::thread_rng()) * stellar_mass,
+            colour : [255.0, 255.0, 0.0, 1.0],
+            radius : 15.0,
         };
         bodies.push(body);
     }
@@ -185,7 +179,9 @@ fn generate_bodies(mean_stars: f64, mean_planets: f64, mean_others: f64) -> Vec<
             id : 0,
             position : [x, y, z],
             velocity : [vx, vy, vz],
-            mass : 50.0 * exp.sample(&mut rand::thread_rng()) * earth_mass
+            mass : 50.0 * exp.sample(&mut rand::thread_rng()) * earth_mass,
+            colour : [0.69803, 0.186215, 0.12549, 1.0],
+            radius : 10.0
         };
         bodies.push(body);
     }
@@ -208,7 +204,9 @@ fn generate_bodies(mean_stars: f64, mean_planets: f64, mean_others: f64) -> Vec<
             id : 0,
             position : [x, y, z],
             velocity : [vx, vy, vz],
-            mass : 5.0e5 * exp.sample(&mut rand::thread_rng()) * other_mass
+            mass : 5.0e5 * exp.sample(&mut rand::thread_rng()) * other_mass,
+            colour : [0.298039, 0.7705882, 0.411765, 1.0],
+            radius : 8.0,
         };
         bodies.push(body);
     }
