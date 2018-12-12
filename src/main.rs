@@ -23,8 +23,8 @@ fn main() {
 
     // INIT SIMULATOR AND THREADPOOL
     let mean_stars = 2.0;
-    let mean_planets = 1.0;
-    let mean_others = 2.0;
+    let mean_planets = 10.0;
+    let mean_others = 20.0;
     let bodies = generate_bodies(mean_stars, mean_planets, mean_others);
     let mut sim = Simulator::new(bodies, 0.0, 100.0);
     let pool = ThreadPool::new(computers_init());
@@ -49,8 +49,8 @@ fn main() {
     while let Some(e) = window.next() {
    
         // Run simulation for a number of steps
-        let number_simulation_steps = 1000;
-        for _ in 0..number_simulation_steps {
+        //let number_simulation_steps = 1000;
+        //for i in 0..number_simulation_steps {
             let chunk_size = 2;
             let mut bodies = sim.bodies.clone();
 
@@ -58,6 +58,7 @@ fn main() {
             window.draw_2d(&e, |c, g| {
                 clear([0.129, 0.1468, 0.168, 1.0], g); // ?????
                 g.clear_stencil(0);
+                
 
                 // Compute work
                 let mut ids : Vec<usize> = Vec::new();
@@ -85,11 +86,14 @@ fn main() {
                 sim.step_forward(&work_done);
                 println!("sim time: {}", sim.time);
 
+
                 for body in &sim.bodies {
                     draw_body(&body, c, g);
                 }
+
+
             });
-        }
+        //}
     }
 }
 
