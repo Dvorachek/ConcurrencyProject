@@ -26,20 +26,28 @@ fn main() {
     // Run simulation for a number of steps
     let number_simulation_steps = 2;
     for _ in 0..number_simulation_steps {
+        let chunk_size = 2;
+        let mut bodies = sim.bodies.clone();
+
         // Compute work
-        for body in &sim.bodies {
-            let id = body.id.clone();
+        let mut ids : Vec<usize> = Vec::new();
+        for chunk in bodies.chunks(chunk_size) {
+            for body in chunk {
+                ids.push(body.id.clone());
+            }
             let tx1 = mpsc::Sender::clone(&tx);
             let sim_clone = sim.clone();
+            let ids_clone = ids.clone();
             pool.execute(move || {
-                let work = sim_clone.do_work(vec![id]);
+                let work = sim_clone.do_work(ids_clone);
                 tx1.send(work).unwrap();
             });
+            ids = Vec::new();
         }
-
+        
         // Get computed work
         let mut work_done : Vec<WorkDone> = vec![];
-        for _ in 0..sim.bodies.len() {
+        while work_done.len() < sim.bodies.len() {
             work_done.append(&mut rx.recv().unwrap());
         }
 
