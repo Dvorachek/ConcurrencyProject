@@ -100,7 +100,7 @@ fn main() {
 fn draw_body(body: &Body, c: Context, g: &mut G2d) {
     Ellipse::new([255.0, 255.0, 0.0, 1.0]) // color
         .draw(
-            [body.position[0] * SCALE, body.position[1] * SCALE,
+            [body.position[0] * SCALE + 500.0, body.position[1] * SCALE + 500.0,
                 15.0, 15.0],  // radius radius
             &c.draw_state, c.transform, g
         );
