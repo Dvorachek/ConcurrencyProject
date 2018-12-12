@@ -184,8 +184,8 @@ fn generate_latency(normal: &Normal) -> f64 {
 
 fn extend_time_spent_working(end: Duration, time_scale_factor: f64) {
     let secs = end.as_secs() as f64 * time_scale_factor;
-    let millisecs = end.subsec_millis() as f64 * time_scale_factor;
-    let extra_time = Duration::new(secs as u64, millisecs as u32);
+    let nanosecs = end.subsec_nanos() as f64 * time_scale_factor;
+    let extra_time = Duration::new(secs as u64, nanosecs as u32);
 
     thread::sleep(extra_time);
 }
