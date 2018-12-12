@@ -48,6 +48,12 @@ fn render(chunk_size: usize, mut sim: Simulator, thread_pool: ThreadPool) {
             },
         ).exit_on_esc(true).build().unwrap();
 
+        let assets = find_folder::Search::ParentsThenKids(3, 3)
+            .for_folder("assets").unwrap();
+        let ref font = assets.join("FiraSans-Regular.ttf");
+        let factory = window.factory.clone();
+        let mut glyphs = Glyphs::new(font, factory, TextureSettings::new()).unwrap();
+
     // piston window lazy means that only events will tricker a step
     window.set_lazy(false);
 
@@ -57,6 +63,14 @@ fn render(chunk_size: usize, mut sim: Simulator, thread_pool: ThreadPool) {
         window.draw_2d(&e, |c, g| {
             clear([0.129, 0.1468, 0.168, 1.0], g);
             g.clear_stencil(0);
+
+            let transform = c.transform.trans(820.0, 980.0);  // position of text X Y
+            text::Text::new_color([255.0, 255.0, 255.0, 1.0], 32).draw(
+                &format!("Day {}", &sim.time / DAY),
+                &mut glyphs,
+                &c.draw_state,
+                transform, g
+            ).unwrap();
 
             let work_done = distribute_work(&thread_pool, &sim, chunk_size.clone(), &tx, &rx);
 
