@@ -1,4 +1,2 @@
 # Concurrency project
-cargo run to execute src/main.rs
-
-## TODO:
+__cargo run render__ to visualize
